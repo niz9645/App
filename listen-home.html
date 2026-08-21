@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Audio Listener</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f6f9; padding: 40px; text-align: center; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 15px; }
+        button.stop { background: #dc3545; }
+        .status { margin-top: 15px; font-weight: bold; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Home Listener</h2>
+        <p>One-way secure audio feed.</p>
+        <button id="connectBtn" onclick="toggleListen()">Start Listening</button>
+        <div class="status" id="statusText">Status: Inactive</div>
+    </div>
+
+    <audio id="remoteAudio" autoplay></audio>
+
+    <script>
+        let peer;
+        let activeCall;
+        const connectBtn = document.getElementById('connectBtn');
+        const statusText = document.getElementById('statusText');
+        const remoteAudio = document.getElementById('remoteAudio');
+
+        const restaurantId = "my-restaurant-live-feed-12345";
+
+        function toggleListen() {
+            if (!activeCall) {
+                statusText.textContent = "Connecting to restaurant...";
+                peer = new Peer();
+
+                peer.on('open', () => {
+                    navigator.mediaDevices.getUserMedia({ audio: false, video: false }).then(() => {
+                        let emptyStream = new MediaStream();
+                        activeCall = peer.call(restaurantId, emptyStream);
+
+                        activeCall.on('stream', (remoteStream) => {
+                            remoteAudio.srcObject = remoteStream;
+                            statusText.textContent = "Status: Listening Live...";
+                            statusText.style.color = "#28a745";
+                            connectBtn.textContent = "Stop Listening";
+                            connectBtn.classList.add('stop');
+                        });
+
+                        activeCall.on('close', () => {
+                            resetState();
+                        });
+                    }).catch(err => {
+                        statusText.textContent = "Connection failed.";
+                    });
+                });
+
+                peer.on('error', (err) => {
+                    statusText.textContent = "Error: Could not reach restaurant.";
+                    resetState();
+                });
+
+            } else {
+                activeCall.close();
+                peer.destroy();
+                resetState();
+            }
+        }
+
+        function resetState() {
+            activeCall = null;
+            remoteAudio.srcObject = null;
+            connectBtn.textContent = "Start Listening";
+            connectBtn.classList.remove('stop');
+            statusText.textContent = "Status: Disconnected";
+            statusText.style.color = "#666";
+        }
+    </script>
+</body>
+</html>
