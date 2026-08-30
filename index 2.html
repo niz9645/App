@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="ml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>5 Star Billing</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; background: #eaeef3; color: #111; font-weight: 500; font-size: 15px; touch-action: manipulation; }
+body.dark { background: #121212; color: #f0f0f0; }
+body.dark header { background: #000; }
+body.dark nav { background: #1e1e1e; }
+body.dark nav button { background: #333; color: #ddd; }
+body.dark nav button.active { background: #fff; color: #000; }
+body.dark .panel { background: #1e1e1e; border-color: #333; }
+body.dark .item, body.dark .pay, body.dark input, body.dark select, body.dark .modal-content { background: #2a2a2a; border-color: #555; color: #fff; }
+header { background: #111; color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+.brand { font-size: 19px; font-weight: 900; }
+.sub { font-size: 13px; opacity: .8; }
+.theme-btn { background: none; border: 1px solid #777; color: #fff; padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 13px; cursor: pointer; }
+nav { display: flex; gap: 6px; overflow: auto; background: #fff; padding: 8px 12px; position: sticky; top: 0; z-index: 9; border-bottom: 2px solid #ddd; }
+nav button { white-space: nowrap; border: 0; border-radius: 8px; padding: 10px 14px; background: #eee; font-weight: 900; font-size: 14px; cursor: pointer; color: #222; }
+nav button.active { background: #111; color: #fff; }
+main { max-width: 1400px; margin: auto; padding: 10px; }
+.panel { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid #ddd; }
+h2 { margin: 2px 0 8px; font-size: 17px; font-weight: 900; }
+.muted { color: #555; font-size: 13px; font-weight: 700; margin-top: 2px; }
+body.dark .muted { color: #aaa; }
+.pos-container { display: grid; grid-template-columns: 1fr 320px; gap: 10px; }
+@media(max-width: 850px) { .pos-container { grid-template-columns: 1fr; } }
+.cats { display: flex; gap: 6px; overflow: auto; margin-bottom: 10px; }
+.cat { border: 0; border-radius: 10px; padding: 9px 13px; white-space: nowrap; font-weight: 800; background: #eee; font-size: 14px; cursor: pointer; color: #333; }
+.cat.active { background: #111; color: #fff; }
+.items { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-height: calc(100vh - 140px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+@media(max-width: 600px) { .items { grid-template-columns: repeat(2, 1fr); } }
+.item { background: #fff; border: 1px solid #ccc; border-radius: 10px; padding: 12px; text-align: left; min-height: 85px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; will-change: transform; }
+.item b { font-size: 16px; font-weight: 900; color: #111; }
+body.dark .item b { color: #fff; }
+.price { font-weight: 900; margin-top: 6px; color: #0055bb; font-size: 17px; }
+.cartrow, .row { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid #eee; align-items: center; font-weight: 700; font-size: 14px; }
+body.dark .cartrow, body.dark .row { border-bottom-color: #333; }
+.controls { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.qty { width: 34px; height: 34px; border: 0; border-radius: 50%; font-size: 17px; font-weight: 900; background: #ddd; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.total { font-size: 17px; font-weight: 900; text-align: right; padding-top: 6px; }
+.payments { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.pay { border: 1px solid #ccc; background: #fff; border-radius: 8px; padding: 9px; font-weight: 900; font-size: 13px; cursor: pointer; text-align: center; }
+.pay.active { background: #111; color: #fff; border-color: #111; }
+.primary { width: 100%; border: 0; border-radius: 10px; background: #111; color: #fff; padding: 13px; font-size: 15px; font-weight: 900; margin-top: 8px; cursor: pointer; }
+.secondary { width: 100%; border: 0; border-radius: 8px; background: #eee; padding: 9px; font-weight: 900; margin-top: 4px; cursor: pointer; color: #111; font-size: 13px; }
+.danger { background: #ffebee; color: #c62828; border: 0; padding: 7px 11px; border-radius: 6px; font-weight: 900; cursor: pointer; font-size: 12px; }
+input, select { width: 100%; padding: 9px 11px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.billcard { border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin: 8px 0; background: #fafafa; font-weight: 700; }
+body.dark .billcard { background: #222; border-color: #444; }
+.hidden { display: none !important; }
+.empty { text-align: center; color: #666; padding: 12px; font-size: 13px; font-weight: 700; }
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 99; }
+.modal-content { background: #fff; width: 90%; max-width: 380px; border-radius: 12px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+.close-btn { background: #eee; border: 0; border-radius: 50%; width: 32px; height: 32px; font-size: 17px; font-weight: 900; cursor: pointer; float: right; }
+
+#receiptPrintArea { display: none; }
+@page { size: 58mm auto; margin: 0mm; }
+@media print {
+html, body { width: 58mm !important; height: auto !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+body * { visibility: hidden !important; }
+#receiptPrintArea, #receiptPrintArea * { visibility: visible !important; }
+#receiptPrintArea { display: block !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 58mm !important; max-width: 58mm !important; font-family: monospace !important; color: #000 !important; background: #fff !important; padding: 2mm !important; margin: 0 !important; box-sizing: border-box !important; overflow: hidden !important; font-size: 11px !important; }
+}
+</style>
+</head>
+<body>
+
+<header>
+<div><div class="brand">⭐ ഫൈവ് സ്റ്റാർ ബില്ലിംഗ്</div><div class="sub">റെസ്റ്റോറന്റ് സെയിൽസ് & എക്സ്പെൻസ്</div></div>
+<button class="theme-btn" onclick="document.body.classList.toggle('dark')">🌙 മോഡ്</button>
+</header>
+
+<nav>
+<button class="active" onclick="show('bill',this)">🧾 പുതിയ ബിൽ</button>
+<button onclick="show('expenses',this)">💸 ചെലവുകൾ</button>
+<button onclick="openReportWithPin(this)">📊 റിപ്പോർട്ട് 🔒</button>
+<button onclick="show('history',this)">📋 ചരിത്രം</button>
+</nav>
+
+<main>
+<section id="bill" class="pos-container">
+<div class="panel" style="margin-bottom:0;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+<h2 style="margin:0;">ഭക്ഷണം തിരഞ്ഞെടുക്കുക</h2>
+<button class="secondary" style="width:auto; margin:0; padding:7px 12px; background:#0055bb; color:#fff;" onclick="openModal('customModal')">+ പുതിയ ഐറ്റം</button>
+</div>
+<div class="cats" id="cats"></div>
+<div class="items" id="items"></div>
+</div>
+
+<div class="panel" style="margin-bottom:0; position:sticky; top:60px;">
+<h2 style="margin-bottom:6px; font-size:15px;">ഇപ്പോഴത്തെ ബിൽ</h2>
+<div id="cart" style="max-height:calc(100vh - 320px); overflow-y:auto; -webkit-overflow-scrolling:touch;"></div>
+<div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px; padding-top:6px; border-top:1px solid #eee;">
+<span style="font-size:13px; font-weight:800;">ഡിസ്കൗണ്ട് (₹):</span>
+<input id="discountInput" type="number" value="0" min="0" oninput="renderCart()" style="width:100px; padding:5px 8px; margin-bottom:0; text-align:right; font-weight:900;">
+</div>
+<div class="total" id="billTotal">ആകെ: ₹0</div>
+<div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+<div class="payments" style="flex:1;">
+<button class="pay active" onclick="payment='ക്യാഷ്'; document.querySelectorAll('.pay').forEach(b=>b.classList.remove('active')); this.classList.add('active');">💵 ക്യാഷ്</button>
+<button class="pay" onclick="payment='യു.പി.ഐ'; document.querySelectorAll('.pay').forEach(b=>b.classList.remove('active')); this.classList.add('active');">📱 യു.പി.ഐ</button>
+</div>
+<button class="secondary" style="width:auto; margin:0; padding:9px 11px;" onclick="cart=[]; renderCart();">ക്ലിയർ</button>
+</div>
+<button class="primary" onclick="saveAndPrintBill()">✓ ബിൽ സേവ് ചെയ്ത് പ്രിന്റ് ചെയ്യുക</button>
+</div>
+</section>
+
+<section id="expenses" class="hidden">
+<div class="panel">
+<h2>തീയതി തിരഞ്ഞെടുക്കുക</h2>
+<input id="expenseDate" type="date" onchange="render()">
+<div id="lockNotice" class="muted" style="color:#c62828; margin-top:4px; display:none;">🔒 പഴയ തീയതിയാണ് തിരഞ്ഞെടുത്തിരിക്കുന്നത്. എഡിറ്റ് ചെയ്യാൻ സാധിക്കില്ല (കാണാൻ മാത്രം കഴിയും).</div>
+</div>
+
+<div class="cats" id="expenseCats" style="margin-bottom:10px;">
+<button class="cat active" onclick="setExpCat('salary', this)">👥 സ്റ്റാഫ് സാലറി</button>
+<button class="cat" onclick="setExpCat('supplier', this)">🛒 പർച്ചേസ് & കടകൾ</button>
+<button class="cat" onclick="setExpCat('rent', this)">🏠 വാടക (Rent)</button>
+<button class="cat" onclick="setExpCat('other', this)">🏷️ മറ്റ് ചെലവുകൾ</button>
+</div>
+
+<div class="panel" style="background:#f8f9fa; border:1px solid #cbd5e1;">
+<h2 style="margin-bottom:8px;">📊 ചെലവുകൾ സംഗ്രഹം</h2>
+<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">
+<div style="background:#fff3e0; padding:9px; border-radius:8px;"><span class="muted">ഇന്ന് കൊടുത്ത സാലറി</span><b id="expTotalSalary" style="font-size:16px;display:block;margin-top:4px;">₹0</b></div>
+<div style="background:#ffebee; padding:9px; border-radius:8px;"><span class="muted">ഇന്ന് കൊടുത്തവ (കടകൾ/വാടക)</span><b id="expTotalSupplierPaid" style="font-size:16px;display:block;margin-top:4px;">₹0</b></div>
+<div style="background:#e8f5e9; padding:9px; border-radius:8px;"><span class="muted">ഇന്ന് കൊടുത്ത ആകെ വാടക</span><b id="expTotalRentPaid" style="font-size:16px;display:block;margin-top:4px;">₹0</b></div>
+<div style="background:#e3f2fd; padding:9px; border-radius:8px;"><span class="muted">ആകെ ബാലൻസ് (Credit)</span><b id="expTotalCredit" style="font-size:16px;display:block;margin-top:4px;">₹0</b></div>
+</div>
+</div>
+
+<div id="expTab-salary" class="expense-tab-content">
+<div class="panel">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+<h2 style="margin:0;">👥 സ്റ്റാഫ് സാലറി കണക്ക്</h2>
+<button class="secondary" id="btnAddStaff" style="width:auto; margin:0; padding:7px 11px; background:#111; color:#fff;" onclick="openModal('staffModal')">+ പുതിയ സ്റ്റാഫ്</button>
+</div>
+<div id="salaryList"></div>
+</div>
+</div>
+
+<div id="expTab-supplier" class="expense-tab-content hidden">
+<div class="panel">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+<h2 style="margin:0;">🛒 കടകളും പർച്ചേസും</h2>
+<button class="secondary" id="btnAddSupplier" style="width:auto; margin:0; padding:7px 11px; background:#0055bb; color:#fff;" onclick="openModal('supplierModal')">+ പുതിയ കട/സപ്ലൈയർ</button>
+</div>
+<div id="supplierList"></div>
+</div>
+</div>
+
+<div id="expTab-rent" class="expense-tab-content hidden">
+<div class="panel">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+<h2 style="margin:0;">🏠 കെട്ടിട വാടക കണക്ക്</h2>
+<button class="secondary" id="btnAddRent" style="width:auto; margin:0; padding:7px 11px; background:#2e7d32; color:#fff;" onclick="openModal('rentModal')">+ പുതിയ വാടക ഇനം</button>
+</div>
+<div id="rentList"></div>
+</div>
+</div>
+
+<div id="expTab-other" class="expense-tab-content hidden">
+<div class="panel">
+<h2>🏷️ മറ്റ് ചെലവുകൾ</h2>
+<div id="otherExpFormContainer">
+<input id="otherExpName" placeholder="ചെലവിന്റെ പേര്">
+<input id="otherExpAmt" type="number" placeholder="തുക ₹">
+<button class="primary" onclick="saveOtherExpense()">+ ചെലവ് ചേർക്കുക</button>
+</div>
+<div id="otherExpenseList" style="margin-top:10px;"></div>
+</div>
+</div>
+</section>
+
+<section id="report" class="hidden">
+<div class="panel">
+<h2>റിപ്പോർട്ട് (ഉടമസ്ഥന് മാത്രം)</h2>
+<button class="secondary" style="margin-bottom:8px" onclick="isReportUnlocked=false; show('bill', document.querySelector('nav button'));">🔒 റിപ്പോർട്ട് ലോക്ക് ചെയ്യുക</button>
+<input id="reportDate" type="date" onchange="renderReport()">
+</div>
+<div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-bottom:10px;">
+<div class="panel" style="margin:0; padding:10px;"><span class="muted">ആകെ വിൽപന</span><b id="rs" style="font-size:17px;display:block;margin-top:2px;">₹0</b></div>
+<div class="panel" style="margin:0; padding:10px;"><span class="muted">ബില്ലുകൾ</span><b id="rb" style="font-size:17px;display:block;margin-top:2px;">0</b></div>
+<div class="panel" style="margin:0; padding:10px; background:#e3f2fd;"><span class="muted">ക്യാഷ്</span><b id="rcash" style="font-size:17px;display:block;margin-top:2px;">₹0</b></div>
+<div class="panel" style="margin:0; padding:10px; background:#f3e5f5;"><span class="muted">യു.പി.ഐ</span><b id="rupi" style="font-size:17px;display:block;margin-top:2px;">₹0</b></div>
+</div>
+<div class="panel"><h2>ഐറ്റം തിരിച്ചുള്ള വിൽപന</h2><div id="itemWiseSalesList"></div></div>
+</section>
+
+<section id="history" class="hidden">
+<div class="panel">
+<h2>ബില്ലുകളുടെ ചരിത്രം</h2>
+<input id="historyDate" type="date" onchange="renderHistory()">
+<div id="historyList"></div>
+</div>
+</section>
+</main>
+
+<div id="receiptPrintArea"></div>
+
+<div id="customModal" class="modal hidden"><div class="modal-content"><button class="close-btn" onclick="closeModal('customModal')">✕</button><h2>പുതിയ ഐറ്റം</h2><input id="customName" placeholder="പേര്"><input id="customPrice" type="number" placeholder="വില ₹"><button class="primary" onclick="addCustomItem()">ചേർക്കുക</button></div></div>
+<div id="staffModal" class="modal hidden"><div class="modal-content"><button class="close-btn" onclick="closeModal('staffModal')">✕</button><h2>പുതിയ സ്റ്റാഫ്</h2><input id="newStaffName" placeholder="സ്റ്റാഫിന്റെ പേര്"><button class="primary" onclick="addNewStaff()">ചേർക്കുക</button></div></div>
+<div id="supplierModal" class="modal hidden"><div class="modal-content"><button class="close-btn" onclick="closeModal('supplierModal')">✕</button><h2>പുതിയ കട</h2><input id="newSupplierName" placeholder="കടയുടെ പേര്"><button class="primary" onclick="addNewSupplier()">ചേർക്കുക</button></div></div>
+<div id="rentModal" class="modal hidden"><div class="modal-content"><button class="close-btn" onclick="closeModal('rentModal')">✕</button><h2>പുതിയ വാടക ഇനം</h2><input id="newRentName" placeholder="വാടകയുടെ പേര്"><button class="primary" onclick="addNewRent()">ചേർക്കുക</button></div></div>
+
+<script>
+const OWNER_PIN = "0987";
+let isReportUnlocked = false, currentExpCat = 'salary';
+firebase.initializeApp({databaseURL: "https://star-17c5a-default-rtdb.asia-southeast1.firebasedatabase.app"});
+const db = firebase.database();
+
+let staffNamesList = [];
+let supplierNamesList = ["Krs", "KC", "Mashood chicken", "Beef(Jamshi)", "Beef(Gafoor)", "Chachan (Powders)"];
+let rentNamesList = ["Shibila", "ആശോകൻ", "ഇഫ്താർ", "ബിജു", "നവാസ്", "അനീഷ്", "കാസിം", "ഉമ്മ"];
+const items = [
+{id:1, n:"ചിക്കൻ ബിരിയാണി ഫുൾ", c:"റൈസ്", p:190},
+{id:2, n:"ചിക്കൻ ബിരിയാണി ഹാഫ്", c:"റൈസ്", p:120},
+{id:3, n:"ബീഫ് ബിരിയാണി ഫുൾ", c:"റൈസ്", p:200},
+{id:4, n:"ബീഫ് ബിരിയാണി ഹാഫ്", c:"റൈസ്", p:130},
+{id:5, n:"നെയ്യ്ചോറ്", c:"റൈസ്", p:100},
+{id:6, n:"ചോറ് (Meals)", c:"റൈസ്", p:80},
+{id:7, n:"നെയ്യ്ചോറ് ഹാഫ്", c:"റൈസ്", p:60},
+{id:8, n:"ബിരിയാണി റൈസ്", c:"റൈസ്", p:110},
+
+{id:10, n:"പൊറോട്ട", c:"ടിഫിൻ", p:15},
+{id:11, n:"പൂരി", c:"ടിഫിൻ", p:15},
+{id:12, n:"പത്തിരി", c:"ടിഫിൻ", p:15},
+{id:13, n:"പുട്ട്", c:"ടിഫിൻ", p:15},
+{id:14, n:"വെള്ളപ്പം", c:"ടിഫിൻ", p:15},
+{id:15, n:"പാൽ അപ്പം", c:"ടിഫിൻ", p:15},
+
+{id:20, n:"പഴം പൊരി", c:"സ്നാക്ക്സ്", p:15},
+{id:21, n:"ഉണ്ട", c:"സ്നാക്ക്സ്", p:15},
+{id:22, n:"ബിസ്കറ്റ് പൊരി", c:"സ്നാക്ക്സ്", p:15},
+{id:23, n:"പഫ്സ്", c:"സ്നാക്ക്സ്", p:20},
+{id:24, n:"കട്ട്ലറ്റ്", c:"സ്നാക്ക്സ്", p:20},
+{id:25, n:"ചിക്കൻ റോൾ", c:"സ്നാക്ക്സ്", p:20},
+{id:26, n:"എല്ലഞ്ചി", c:"സ്നാക്ക്സ്", p:20},
+{id:27, n:"പാകവട", c:"സ്നാക്ക്സ്", p:30},
+{id:28, n:"പരിപ്പ് വട", c:"സ്നാക്ക്സ്", p:15},
+{id:29, n:"വട", c:"സ്നാക്ക്സ്", p:15},
+{id:30, n:"നെയ്യപ്പം", c:"സ്നാക്ക്സ്", p:15},
+
+{id:40, n:"ചിക്കൻ കറി", c:"ചിക്കൻ", p:120},
+{id:41, n:"ചിക്കൻ ചില്ലി", c:"ചിക്കൻ", p:150},
+{id:42, n:"ചിക്കൻ ലെഗ് മസാല", c:"ചിക്കൻ", p:170},
+{id:43, n:"ചിക്കൻ പാർട്സ്", c:"ചിക്കൻ", p:110},
+{id:44, n:"ചിക്കൻ കുർമ", c:"ചിക്കൻ", p:130},
+{id:45, n:"ചിക്കൻ കറി സിംഗിൾ", c:"ചിക്കൻ", p:70},
+{id:46, n:"കട മസാല", c:"ചിക്കൻ", p:130},
+
+{id:50, n:"ബീഫ് കറി", c:"ബീഫ്", p:140},
+{id:51, n:"ബീഫ് ഫ്രൈ", c:"ബീഫ്", p:150},
+{id:52, n:"ബീഫ് ലിവർ ഫ്രൈ", c:"ബീഫ്", p:150},
+{id:53, n:"ബീഫ് ലിവർ കറി", c:"ബീഫ്", p:140},
+{id:54, n:"ബീഫ് ബോട്ടി", c:"ബീഫ്", p:110},
+{id:55, n:"ബീഫ് സിംഗിൾ", c:"ബീഫ്", p:110},
+{id:56, n:"ബോട്ടി", c:"ബീഫ്", p:70},
+{id:57, n:"ലിവർ (Liver)", c:"ബീഫ്", p:110},
+{id:58, n:"ബീഫ് എല്ല് കറി", c:"ബീഫ്", p:110},
+
+{id:60, n:"വെജ് കറി", c:"Curry", p:40},
+{id:61, n:"ഫിഷ് ഫ്രൈ 1", c:"Curry", p:80},
+{id:62, n:"ഫിഷ് ഫ്രൈ 2", c:"Curry", p:90},
+{id:63, n:"ഫിഷ് കറി 1", c:"Curry", p:80},
+{id:64, n:"ഫിഷ് കറി 2", c:"Curry", p:90},
+{id:65, n:"സിംഗിൾ ഓംലെറ്റ്", c:"Curry", p:20},
+{id:66, n:"ഡബിൾ ഓംലെറ്റ്", c:"Curry", p:40},
+{id:67, n:"മുട്ട കറി", c:"Curry", p:45},
+{id:68, n:"മുട്ട റോസ്റ്റ്", c:"Curry", p:45},
+{id:69, n:"മസാല കറി", c:"Curry", p:45},
+
+{id:70, n:"ചായ", c:"Drinks", p:15},
+{id:71, n:"ബ്രൂ കോഫി", c:"Drinks", p:20},
+{id:72, n:"കോഫി", c:"Drinks", p:15},
+{id:73, n:"ബൂസ്റ്റ്", c:"Drinks", p:20},
+{id:74, n:"ഹോർലിക്സ്", c:"Drinks", p:20},
+{id:75, n:"കട്ടൻ ചായ", c:"Drinks", p:10},
+{id:76, n:"കട്ടൻ കോഫി", c:"Drinks", p:10},
+{id:77, n:"ലൈം ടീ", c:"Drinks", p:15},
+{id:78, n:"വെള്ളം 1L", c:"Drinks", p:20},
+{id:79, n:"വെള്ളം 2L", c:"Drinks", p:30},
+{id:80, n:"വെള്ളം 1/2L", c:"Drinks", p:10},
+{id:81, n:"സോഫ്റ്റ് ഡ്രിങ്ക് 750ml", c:"Drinks", p:35},
+{id:82, n:"സോഫ്റ്റ് ഡ്രിങ്ക് 250ml", c:"Drinks", p:20},
+
+{id:90, n:"മാംഗോ ഷേക്ക്", c:"Shake", p:90},
+{id:91, n:"മുസാബി ഷേക്ക്", c:"Shake", p:90},
+{id:92, n:"പൈനാപ്പിൾ ഷേക്ക്", c:"Shake", p:80},
+{id:93, n:"അനാർ ഷേക്ക്", c:"Shake", p:90},
+{id:94, n:"ഗ്രേപ്പ് ഷേക്ക്", c:"Shake", p:90},
+{id:95, n:"ഓറഞ്ച് ഷേക്ക്", c:"Shake", p:90},
+{id:96, n:"ആപ്പിൾ ഷേക്ക്", c:"Shake", p:90},
+
+{id:100, n:"മാംഗോ ജ്യൂസ്", c:"Juice", p:80},
+{id:101, n:"മുസാബി ജ്യൂസ്", c:"Juice", p:80},
+{id:102, n:"പൈനാപ്പിൾ ജ്യൂസ്", c:"Juice", p:70},
+{id:103, n:"അനാർ ജ്യൂസ്", c:"Juice", p:80},
+{id:104, n:"ഗ്രേപ്പ് ജ്യൂസ്", c:"Juice", p:80},
+{id:105, n:"ഓറഞ്ച് ജ്യൂസ്", c:"Juice", p:80},
+{id:106, n:"ആപ്പിൾ ജ്യൂസ്", c:"Juice", p:80}
+];
+
+let bills = [], salaries = [], suppliers = [], rents = [], otherExpenses = [], cart = [], cat = "All", payment = "ക്യാഷ്";
+
+function getBusinessDate(d = new Date()) {
+let copy = new Date(d.getTime());
+if (copy.getHours() < 4) copy.setDate(copy.getDate() - 1);
+let year = copy.getFullYear();
+let month = String(copy.getMonth() + 1).padStart(2, '0');
+let day = String(copy.getDate()).padStart(2, '0');
+return `${year}-${month}-${day}`;
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+let today = getBusinessDate();
+let expInput = document.getElementById('expenseDate');
+if (expInput) expInput.value = today;
+let repInput = document.getElementById('reportDate');
+if (repInput) repInput.value = today;
+let histInput = document.getElementById('historyDate');
+if (histInput) histInput.value = today;
+
+renderItems();
+});
+
+['bills', 'salaries', 'suppliers', 'rents', 'otherExpenses', 'customStaff', 'customSuppliers', 'customRents'].forEach(refName => {
+db.ref(refName).on("value", snapshot => {
+let data = snapshot.val();
+if (refName === 'bills') bills = data ? Object.entries(data).map(([k,v]) => ({...v, fbKey:k})) : [];
+if (refName === 'salaries') salaries = data ? Object.entries(data).map(([k,v]) => ({...v, fbKey:k})) : [];
+if (refName === 'suppliers') suppliers = data ? Object.entries(data).map(([k,v]) => ({...v, fbKey:k})) : [];
+if (refName === 'rents') rents = data ? Object.entries(data).map(([k,v]) => ({...v, fbKey:k})) : [];
+if (refName === 'otherExpenses') otherExpenses = data ? Object.entries(data).map(([k,v]) => ({...v, fbKey:k})) : [];
+if (refName === 'customStaff' && data) {
+staffNamesList = [];
+Object.values(data).forEach(n => { if(!staffNamesList.includes(n)) staffNamesList.push(n); });
+}
+if (refName === 'customSuppliers' && data) {
+Object.values(data).forEach(n => { if(!supplierNamesList.includes(n)) supplierNamesList.push(n); });
+}
+if (refName === 'customRents' && data) {
+rentNamesList = [];
+Object.values(data).forEach(n => { if(!rentNamesList.includes(n)) rentNamesList.push(n); });
+}
+render();
+});
+});
+
+function money(n) { return "₹" + (isNaN(n) ? 0 : Math.round(n)); }
+function openModal(id) { document.getElementById(id).classList.remove("hidden"); }
+function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
+function setExpCat(catKey, btn) {
+currentExpCat = catKey;
+document.querySelectorAll("#expenseCats .cat").forEach(b => b.classList.remove("active"));
+btn.classList.add("active");
+document.querySelectorAll(".expense-tab-content").forEach(el => el.classList.add("hidden"));
+document.getElementById("expTab-" + catKey).classList.remove("hidden");
+}
+
+function addNewStaff() {
+let name = document.getElementById("newStaffName").value.trim();
+if (!name) return alert("പേര് നൽകുക");
+let dt = getBusinessDate();
+db.ref("customStaff").push(name).then(() => {
+db.ref("salaries").push({date: dt, name, billAmt: 0, paidAmt: 0});
+document.getElementById("newStaffName").value = "";
+closeModal('staffModal');
+});
+}
+function addNewSupplier() {
+let name = document.getElementById("newSupplierName").value.trim();
+if (!name) return alert("പേര് നൽകുക");
+let dt = getBusinessDate();
+db.ref("customSuppliers").push(name).then(() => {
+db.ref("suppliers").push({date: dt, name, billAmt: 0, paidAmt: 0});
+document.getElementById("newSupplierName").value = "";
+closeModal('supplierModal');
+});
+}
+function addNewRent() {
+let name = document.getElementById("newRentName").value.trim();
+let initialRent = Number(prompt(`${name} - മാസാമാസം അടക്കേണ്ട സ്ഥിര വാടക തുക ₹ (അല്ലെങ്കിൽ 0):`, "0")) || 0;
+if (!name) return alert("പേര് നൽകുക");
+let dt = getBusinessDate();
+db.ref("customRents").push(name).then(() => {
+if(initialRent > 0) {
+db.ref("rents").push({date: dt, name, billAmt: initialRent, paidAmt: 0});
+} else {
+db.ref("rents").push({date: dt, name, billAmt: 0, paidAmt: 0});
+}
+document.getElementById("newRentName").value = "";
+closeModal('rentModal');
+});
+}
+
+function openReportWithPin(btn) {
+if (isReportUnlocked) show('report', btn);
+else {
+let pin = prompt("PIN നൽകുക:");
+if (pin === OWNER_PIN) { isReportUnlocked = true; show('report', btn); }
+else if (pin) alert("തെറ്റായ PIN!");
+}
+}
+
+function show(id, btn) {
+document.querySelectorAll("main section").forEach(x => x.classList.add("hidden"));
+document.getElementById(id).classList.remove("hidden");
+document.querySelectorAll("nav button").forEach(x => x.classList.remove("active"));
+if (btn) btn.classList.add("active");
+render();
+}
+
+function renderItems() {
+let cs = ["All", ...new Set(items.map(x => x.c))];
+document.getElementById("cats").innerHTML = cs.map(x => `<button class="cat ${x==cat?'active':''}" onclick="cat='${x}';renderItems()">${x}</button>`).join("");
+let list = cat == "All" ? items : items.filter(x => x.c == cat);
+document.getElementById("items").innerHTML = list.map(x => `<button class="item" onclick="add('${x.id}')"><b>${x.n}</b><div class="price">${money(x.p)}</div></button>`).join("");
+}
+
+function add(id) {
+let x = items.find(a => String(a.id) === String(id));
+let r = cart.find(a => String(a.id) === String(id) && !a.isCustom);
+if (r) r.q++; else cart.push({id: x.id, n: x.n, p: x.p, q: 1, isCustom: false});
+renderCart();
+}
+
+function addCustomItem() {
+let name = document.getElementById("customName").value.trim();
+let price = Number(document.getElementById("customPrice").value);
+if (!name || isNaN(price) || price <= 0) return alert("ശരിയായ പേരും വിലയും നൽകുക");
+cart.push({id: 'c_' + Date.now(), n: name, p: price, q: 1, isCustom: true});
+document.getElementById("customName").value = ""; document.getElementById("customPrice").value = "";
+closeModal('customModal'); renderCart();
+}
+
+function change(id, d) {
+let r = cart.find(x => String(x.id) === String(id));
+if (r) { r.q += d; if (r.q < 1) cart = cart.filter(x => String(x.id) !== String(id)); }
+renderCart();
+}
+
+function renderCart() {
+document.getElementById("cart").innerHTML = cart.length ? cart.map(x => `
+<div class="cartrow"><div><b>${x.n}</b><div class="controls"><button class="qty" onclick="change('${x.id}', -1)">−</button><span style="font-weight:900;">${x.q}</span><button class="qty" onclick="change('${x.id}', 1)">+</button></div></div><b>${money(x.p * x.q)}</b></div>`).join("") : '<div class="empty">സാധനങ്ങൾ തിരഞ്ഞെടുക്കുക</div>';
+let sub = cart.reduce((s, x) => s + (x.p * x.q), 0);
+let disc = Number(document.getElementById("discountInput").value) || 0;
+document.getElementById("billTotal").textContent = "ആകെ: " + money(Math.max(0, sub - disc));
+}
+
+function saveAndPrintBill() {
+if (!cart.length) return alert("ഐറ്റം തിരഞ്ഞെടുക്കൂ");
+
+let now = new Date();
+let sub = cart.reduce((s, x) => s + (x.p * x.q), 0);
+let disc = Number(document.getElementById("discountInput").value) || 0;
+let finalTotal = Math.max(0, sub - disc);
+let displayTime = now.toLocaleDateString('en-GB') + ' ' + now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+let currentItems = cart;
+let currentPayment = payment;
+
+let businessDt = getBusinessDate(now);
+let todaysBills = bills.filter(b => b.date === businessDt);
+let billNumber = todaysBills.length + 1;
+
+cart = [];
+document.getElementById("discountInput").value = 0;
+renderCart();
+
+triggerThermalPrint(billNumber, displayTime, currentItems, sub, disc, finalTotal, currentPayment);
+
+setTimeout(() => {
+db.ref("bills").push({
+number: billNumber, date: businessDt, displayTime,
+subtotal: sub, discount: disc, total: finalTotal, payment: currentPayment, items: currentItems
+});
+}, 0);
+}
+
+function triggerThermalPrint(billNo, time, itemsArr, sub, disc, total, payMethod) {
+let html = `
+<div style="text-align:center; font-weight:bold; font-size:13px;">⭐ ഫൈവ് സ്റ്റാർ റെസ്റ്റോറന്റ്</div>
+<div style="border-bottom:1px dashed #000; margin:4px 0;"></div>
+<div style="font-size:10px; display:flex; justify-content:space-between;"><span>ബിൽ # ${billNo}</span> <span>${time}</span></div>
+<div style="border-bottom:1px dashed #000; margin:4px 0;"></div>
+<table style="width:100%; font-size:10px; border-collapse:collapse;">
+<tr style="border-bottom:1px solid #000;"><th align="left">ഇനം</th><th align="center">എണ്ണം</th><th align="right">വില</th></tr>
+${itemsArr.map(i => `<tr><td>${i.n}</td><td align="center">${i.q}</td><td align="right">${Math.round(i.p * i.q)}</td></tr>`).join('')}
+</table>
+<div style="border-bottom:1px dashed #000; margin:4px 0;"></div>
+<div style="font-size:10px; display:flex; justify-content:space-between;"><span>ഉപതുക:</span> <span>₹${sub}</span></div>
+${disc > 0 ? `<div style="font-size:10px; display:flex; justify-content:space-between;"><span>ഡിസ്കൗണ്ട്:</span> <span>-₹${disc}</span></div>` : ''}
+<div style="font-size:12px; font-weight:bold; display:flex; justify-content:space-between; margin-top:2px;"><span>ആകെ തുക:</span> <span>₹${total}</span></div>
+<div style="font-size:10px; margin-top:2px;">പേയ്മെന്റ് രീതി: ${payMethod}</div>
+<div style="border-bottom:1px dashed #000; margin:4px 0;"></div>
+<div style="text-align:center; font-size:9px; margin-top:4px;">നന്ദി! വീണ്ടും വരുക!</div>
+`;
+let printArea = document.getElementById("receiptPrintArea");
+printArea.innerHTML = html;
+
+window.print();
+}
+
+function updateExpenseRecord(category, name) {
+let selectedDt = document.getElementById("expenseDate").value;
+let todayDt = getBusinessDate();
+
+if (selectedDt !== todayDt) {
+return alert("⚠️ കഴിഞ്ഞ ദിവസങ്ങളിലെ കണക്കുകളിൽ മാറ്റം വരുത്താൻ സാധിക്കില്ല (Locked). ഇന്നത്തെ തീയതിയിലേക്ക് മാറുക.");
+}
+
+let listRef = category === 'salary' ? salaries : (category === 'supplier' ? suppliers : rents);
+let existing = listRef.find(s => s.name === name && s.date === selectedDt);
+
+let bAmt = Number(prompt(`${name} - ഇന്നത്തെ ബിൽ/ഡ്യൂ തുക ₹:`, existing ? existing.billAmt || 0 : 0)) || 0;
+let pAmt = Number(prompt(`${name} - ഇന്ന് കൊടുത്ത തുക ₹:`, existing ? existing.paidAmt || 0 : 0)) || 0;
+
+let dbPath = category === 'salary' ? 'salaries' : (category === 'supplier' ? 'suppliers' : 'rents');
+if (existing) {
+db.ref(dbPath + "/" + existing.fbKey).update({billAmt: bAmt, paidAmt: pAmt});
+} else {
+db.ref(dbPath).push({date: selectedDt, name, billAmt: bAmt, paidAmt: pAmt});
+}
+}
+
+function clearExpenseBalance(category, name) {
+let selectedDt = document.getElementById("expenseDate").value;
+let todayDt = getBusinessDate();
+
+if (selectedDt !== todayDt) {
+return alert("⚠️ കഴിഞ്ഞ ദിവസങ്ങളിലെ കണക്കുകളിൽ മാറ്റം വരുത്താൻ സാധിക്കില്ല (Locked).");
+}
+
+if(!confirm(`${name}-ന്റെ പേയ്‌മെന്റ് കണക്ക് ക്ലിയർ ചെയ്യണമോ?`)) return;
+
+let listRef = rents;
+let existing = listRef.find(s => s.name === name && s.date === selectedDt);
+let dbPath = 'rents';
+
+if (existing) {
+db.ref(dbPath + "/" + existing.fbKey).update({paidAmt: 0});
+} else {
+db.ref(dbPath).push({date: selectedDt, name, billAmt: 0, paidAmt: 0});
+}
+}
+
+function getCumulativeData(category, name, targetDateStr) {
+let listRef = category === 'salary' ? salaries : (category === 'supplier' ? suppliers : rents);
+let personRecords = listRef.filter(s => s.name === name).sort((a, b) => a.date.localeCompare(b.date));
+let totalBill = 0;
+let totalPaid = 0;
+
+for (let rec of personRecords) {
+if (rec.date > targetDateStr) break;
+totalBill += (rec.billAmt || 0);
+totalPaid += (rec.paidAmt || 0);
+}
+let carryover = totalBill - totalPaid;
+return { totalBill, totalPaid, carryover };
+}
+
+function saveOtherExpense() {
+let selectedDt = document.getElementById("expenseDate").value;
+let todayDt = getBusinessDate();
+
+if (selectedDt !== todayDt) {
+return alert("⚠️ കഴിഞ്ഞ ദിവസങ്ങളിലെ കണക്കുകളിൽ മാറ്റം വരുത്താൻ സാധിക്കില്ല (Locked).");
+}
+
+let name = document.getElementById("otherExpName").value.trim();
+let amount = Number(document.getElementById("otherExpAmt").value);
+if (!name || isNaN(amount)) return alert("വിവരങ്ങൾ നൽകുക");
+db.ref("otherExpenses").push({date: selectedDt, name, amount, paidAmt: amount}).then(() => {
+document.getElementById("otherExpName").value = ""; document.getElementById("otherExpAmt").value = ""; render();
+});
+}
+
+function renderExpenses() {
+let dt = document.getElementById("expenseDate").value || getBusinessDate();
+let todayDt = getBusinessDate();
+let isLocked = dt !== todayDt;
+
+let lockNotice = document.getElementById("lockNotice");
+if (lockNotice) lockNotice.style.display = isLocked ? "block" : "none";
+
+let daySal = salaries.filter(s => s.date === dt);
+let daySup = suppliers.filter(s => s.date === dt);
+let dayRent = rents.filter(r => r.date === dt);
+let dayOth = otherExpenses.filter(o => o.date === dt);
+
+let totSalPaid = daySal.reduce((a,b)=>a+(b.paidAmt||0), 0);
+let totSupPaid = daySup.reduce((a,b)=>a+(b.paidAmt||0), 0) + dayOth.reduce((a,b)=>a+(b.paidAmt||0), 0);
+let totRentPaid = dayRent.reduce((a,b)=>a+(b.paidAmt||0), 0);
+
+document.getElementById("expTotalSalary").textContent = money(totSalPaid);
+document.getElementById("expTotalSupplierPaid").textContent = money(totSupPaid);
+document.getElementById("expTotalRentPaid").textContent = money(totRentPaid);
+
+let totSalBal = staffNamesList.reduce((acc, name) => acc + Math.max(0, getCumulativeData('salary', name, dt).carryover), 0);
+let totSupBal = supplierNamesList.reduce((acc, name) => acc + Math.max(0, getCumulativeData('supplier', name, dt).carryover), 0);
+let totRentBal = rentNamesList.reduce((acc, name) => acc + Math.max(0, getCumulativeData('rent', name, dt).carryover), 0);
+
+document.getElementById("expTotalCredit").textContent = money(totSalBal + totSupBal + totRentBal);
+
+document.getElementById("salaryList").innerHTML = staffNamesList.length ? staffNamesList.map(name => {
+let data = getCumulativeData('salary', name, dt);
+let dayRec = daySal.find(s => s.name === name);
+let todayBill = dayRec ? dayRec.billAmt || 0 : 0;
+let todayPaid = dayRec ? dayRec.paidAmt || 0 : 0;
+return `<div class="row"><div><b>${name}</b><div class="muted">ഇന്നത്തെ ബിൽ: ₹${todayBill} | ഇന്ന് കൊടുത്തത്: ₹${todayPaid}<br>ആകെ Paid: <b>₹${data.totalPaid}</b> | Carryover: <span style="color:${data.carryover>0?'#c62828':'#2e7d32'}">₹${data.carryover}</span></div></div></div>`;
+}).join('') : '<div class="empty">സ്റ്റാഫുകളെ ചേർക്കുക</div>';
+
+document.getElementById("supplierList").innerHTML = supplierNamesList.map(name => {
+let data = getCumulativeData('supplier', name, dt);
+let dayRec = daySup.find(s => s.name === name);
+let todayBill = dayRec ? dayRec.billAmt || 0 : 0;
+let todayPaid = dayRec ? dayRec.paidAmt || 0 : 0;
+return `<div class="row"><div><b>${name}</b><div class="muted">ഇന്നത്തെ ബിൽ: ₹${todayBill} | ഇന്ന് കൊടുത്തത്: ₹${todayPaid}<br>ആകെ Paid: <b>₹${data.totalPaid}</b> | Carryover: <span style="color:${data.carryover>0?'#c62828':'#2e7d32'}">₹${data.carryover}</span></div></div></div>`;
+}).join('');
+
+document.getElementById("rentList").innerHTML = rentNamesList.length ? rentNamesList.map(name => {
+let data = getCumulativeData('rent', name, dt);
+let dayRec = dayRent.find(r => r.name === name);
+let todayBill = dayRec ? dayRec.billAmt || 0 : 0;
+let todayPaid = dayRec ? dayRec.paidAmt || 0 : 0;
+return `<div class="row"><div><b>${name}</b><div class="muted">ഇന്നത്തെ ബിൽ: ₹${todayBill} | ഇന്ന് കൊടുത്തത്: ₹${todayPaid}<br>ആകെ Paid: <b>₹${data.totalPaid}</b> | Carryover: <span style="color:${data.carryover>0?'#c62828':'#2e7d32'}">₹${data.carryover}</span></div></div>
+<div style="display:flex; gap:4px;">
+<button class="secondary" style="width:auto; margin:0; padding:6px 10px; ${isLocked ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="${isLocked ? "alert('⚠️ കഴിഞ്ഞ ദിവസങ്ങളിലെ കണക്കുകളിൽ മാറ്റം വരുത്താൻ സാധിക്കില്ല (Locked).');" : `updateExpenseRecord('rent', '${name}')`}">മാറ്റുക</button>
+<button class="danger" style="padding:6px 8px; font-size:11px; ${isLocked ? 'opacity:0.5; cursor:not-allowed;' : ''}" onclick="${isLocked ? "alert('⚠️ കഴിഞ്ഞ ദിവസങ്ങളിലെ കണക്കുകളിൽ മാറ്റം വരുത്താൻ സാധിക്കില്ല (Locked).');" : `clearExpenseBalance('rent', '${name}')`}">ക്ലിയർ</button>
+</div></div>`;
+}).join('') : '<div class="empty">വാടക ഇനങ്ങൾ ഇല്ല</div>';
+
+let otherFormContainer = document.getElementById("otherExpFormContainer");
+if (otherFormContainer) otherFormContainer.style.display = isLocked ? "none" : "block";
+
+document.getElementById("otherExpenseList").innerHTML = dayOth.length ? dayOth.map(o => `<div class="row"><div><b>${o.name}</b><div class="muted">തുക: ₹${o.amount}</div></div>${isLocked ? '' : `<button class="danger" onclick="db.ref('otherExpenses/${o.fbKey}').remove()">കളയുക</button>`}</div>`).join('') : '';
+}
+
+function renderReport() {
+let dt = document.getElementById("reportDate").value || getBusinessDate();
+let bList = bills.filter(b => b.date === dt);
+let tot = bList.reduce((a,b)=>a+b.total,0);
+document.getElementById("rs").textContent = money(tot);
+document.getElementById("rb").textContent = bList.length;
+document.getElementById("rcash").textContent = money(bList.filter(b=>b.payment && b.payment.includes('ക്യാഷ്')).reduce((a,b)=>a+b.total,0));
+document.getElementById("rupi").textContent = money(bList.filter(b=>b.payment && b.payment.includes('യു.പി.ഐ')).reduce((a,b)=>a+b.total,0));
+let sum = {};
+bList.forEach(b => { if(b.items) b.items.forEach(i => { if(!sum[i.n]) sum[i.n]={q:0, t:0}; sum[i.n].q+=i.q; sum[i.n].t+=(i.p*i.q); }); });
+document.getElementById("itemWiseSalesList").innerHTML = Object.entries(sum).sort((a,b)=>b[1].q-a[1].q).map(([n,d])=>`<div class="row"><div><b>${n}</b><div class="muted">എണ്ണം: ${d.q}</div></div><b>${money(d.t)}</b></div>`).join('') || '<div class="empty">സെയിൽസ് ഇല്ല</div>';
+}
+
+function renderHistory() {
+let dt = document.getElementById("historyDate").value || getBusinessDate();
+document.getElementById("historyList").innerHTML = bills.filter(b=>b.date===dt).reverse().map(b=>`<div class="billcard"><div style="display:flex; justify-content:space-between; font-weight:900;"><span>ബിൽ #${b.number} (${b.displayTime || ''})</span><span>${money(b.total)}</span></div><div class="muted">${b.items ? b.items.map(i=>`${i.n} (×${i.q})`).join(', ') : ''}</div><div class="muted" style="margin-top:4px;">രീതി: ${b.payment}</div></div>`).join('') || '<div class="empty">ബില്ലുകൾ ഇല്ല</div>';
+}
+
+function render() { renderExpenses(); renderReport(); renderHistory(); }
+</script>
+</body>
+</html>
